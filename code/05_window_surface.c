@@ -139,7 +139,12 @@ struct QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKH
 	uint32_t queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, NULL);
 
-	VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+	VkQueueFamilyProperties *queueFamilies;
+	queueFamilies = malloc(sizeof(*queueFamilies) * queueFamilyCount);
+	if (!queueFamilies) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies);
 	int i;
 	int success = 0;
@@ -155,6 +160,7 @@ struct QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKH
 			success |= 2;
 		}
 	}
+	free(queueFamilies);
 	if(success&3)
 		return indices;
 
@@ -336,6 +342,7 @@ void mainLoop(struct application *app)
 int main()
 {
 	struct application app;
+	memset(&app, 0, sizeof(app));
 	run(&app);
 	return 0;
 }

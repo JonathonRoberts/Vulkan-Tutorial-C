@@ -16,6 +16,22 @@
 #define HEIGHT 600
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+
+#ifdef _WIN32
+#include <windows.h>
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 1
+#endif
+int clock_gettime(int UNUSED, struct timespec* spec)
+{
+	__int64 wintime; GetSystemTimeAsFileTime((FILETIME*)&wintime);
+	wintime -= 116444736000000000i64;  /*1jan1601 to 1jan1970*/
+	spec->tv_sec = wintime / 10000000i64;
+	spec->tv_nsec = wintime % 10000000i64 * 100;
+	return 0;
+}
+#endif
+
 /* for some reason CLANG doesn't realise this is in the glfw3 library */
 extern GLFWAPI VkResult glfwCreateWindowSurface(VkInstance instance, GLFWwindow* window, const VkAllocationCallbacks* allocator, VkSurfaceKHR* surface);
 
@@ -24,13 +40,13 @@ const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;
 #endif
-const char *validationLayers[] = {"VK_LAYER_KHRONOS_validation"};
-const char *deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,NULL};
+const char* validationLayers[] = { "VK_LAYER_KHRONOS_validation" };
+const char* deviceExtensions[] = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,NULL };
 
 #define MAX_FRAMES_IN_FLIGHT 2
 #define ATTRIBUTE_DESCRIPTION_COUNT 2
 float radians(float radians) {
-	return radians * (M_PI/180.0);
+	return radians * (M_PI / 180.0);
 }
 
 struct SwapChainSupportDetails {
@@ -43,11 +59,11 @@ struct SwapChainSupportDetails {
 
 struct application
 {
-	GLFWwindow *window;
+	GLFWwindow* window;
 	VkInstance instance;
 	int width;
 	int height;
-	const char *extensions[64];
+	const char* extensions[64];
 	const char enabled_layers[64][64];
 	//const char devices[64][64];
 	uint32_t enabled_extension_count;
@@ -72,7 +88,7 @@ struct application
 	VkPipeline graphicsPipeline;
 	VkFramebuffer swapChainFramebuffers[64];
 	VkCommandPool commandPool;
-	VkCommandBuffer *commandBuffers;
+	VkCommandBuffer* commandBuffers;
 	VkSemaphore imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkSemaphore renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
 	VkFence inFlightFences[MAX_FRAMES_IN_FLIGHT];
@@ -90,10 +106,10 @@ struct application
 	VkDescriptorSet descriptorSets[64];
 
 };
-struct UniformBufferObject{
-      mat4 model;
-      mat4 view;
-      mat4 proj;
+struct UniformBufferObject {
+	mat4 model;
+	mat4 view;
+	mat4 proj;
 };
 
 struct QueueFamilyIndices {
@@ -111,98 +127,98 @@ const struct Vertex vertices[] = {
 	{{0.5f, 0.5f}, {0.0f, 0.0f, 1.0f}},
 	{{-0.5f, 0.5f}, {1.0f, 1.0f, 1.0f}}
 };
-const uint16_t indices[] = {0,1,2,2,3,0};
+const uint16_t indices[] = { 0,1,2,2,3,0 };
 
-void initWindow(struct application *app);
-void run(struct application *app);
+void initWindow(struct application* app);
+void run(struct application* app);
 void initVulkan();
-void cleanup(struct application *app);
-void mainLoop(struct application *app);
-void createInstance(struct application *app);
-void createSwapChain(struct application *app);
-void createImageViews(struct application *app);
-void createRenderPass(struct application *app);
-void createGraphicsPipeline(struct application *app);
-void createDescriptorSetLayout(struct application *app);
-void createFramebuffers(struct application *app);
-void createCommandPool(struct application *app);
-void createCommandBuffers(struct application *app);
-void createSyncObjects(struct application *app);
-void createVertexBuffer(struct application *app);
-void createIndexBuffer(struct application *app);
-void getRequiredExtensions(struct application *app);
-void createUniformBuffers(struct application *app);
-bool checkValidationLayerSupport(struct application *app);
-void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT *createInfo);
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(enum VkDebugUtilsMessageSeverityFlagBitsEXT messageseverity,  unsigned int messageType,  const struct VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData);
-void pickPhysicalDevice(struct application *app);
-void createLogicalDevice(struct application *app);
-bool isDeviceSuitable(VkPhysicalDevice device,VkSurfaceKHR surface);
-bool checkDeviceExtensionSupport(VkPhysicalDevice device,VkSurfaceKHR surface);
-struct QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device,VkSurfaceKHR surface);
-void createSurface(struct application *app);
-void setupDebugMessenger(struct application *app);
-VkSurfaceFormatKHR chooseSwapSurfaceFormat(const VkSurfaceFormatKHR *availableFormats, uint32_t formatCount);
-VkPresentModeKHR chooseSwapPresentMode(VkPresentModeKHR *availablePresentModes,uint32_t presentModeCount);
-VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR capabilities,struct application *app);
-struct SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device,VkSurfaceKHR surface);
-char *readFile(char *filename);
-VkShaderModule createShaderModule(struct application *app,char *code);
-void drawFrame(struct application *app);
-void recreateSwapChain(struct application *app);
-static void framebufferResizeCallback(GLFWwindow *window, int width, int height);
-void cleanupSwapChain(struct application *app) ;
-static VkVertexInputBindingDescription *getBindingDescription(); 
-static VkVertexInputAttributeDescription *getAttributeDescriptions(VkVertexInputAttributeDescription destination[2]);
-void createBuffer(struct application *app, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer *buffer, VkDeviceMemory *bufferMemory);
-void copyBuffer(struct application *app,VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
-void createDescriptorPool(struct application *app);
-void createDescriptorSets(struct application *app);
-void updateUniformBuffer(struct application *app, uint32_t currentImage);
+void cleanup(struct application* app);
+void mainLoop(struct application* app);
+void createInstance(struct application* app);
+void createSwapChain(struct application* app);
+void createImageViews(struct application* app);
+void createRenderPass(struct application* app);
+void createGraphicsPipeline(struct application* app);
+void createDescriptorSetLayout(struct application* app);
+void createFramebuffers(struct application* app);
+void createCommandPool(struct application* app);
+void createCommandBuffers(struct application* app);
+void createSyncObjects(struct application* app);
+void createVertexBuffer(struct application* app);
+void createIndexBuffer(struct application* app);
+void getRequiredExtensions(struct application* app);
+void createUniformBuffers(struct application* app);
+bool checkValidationLayerSupport(struct application* app);
+void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT* createInfo);
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(enum VkDebugUtilsMessageSeverityFlagBitsEXT messageseverity, unsigned int messageType, const struct VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+void pickPhysicalDevice(struct application* app);
+void createLogicalDevice(struct application* app);
+bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface);
+bool checkDeviceExtensionSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
+struct QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
+void createSurface(struct application* app);
+void setupDebugMessenger(struct application* app);
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(const VkSurfaceFormatKHR* availableFormats, uint32_t formatCount);
+VkPresentModeKHR chooseSwapPresentMode(VkPresentModeKHR* availablePresentModes, uint32_t presentModeCount);
+VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR capabilities, struct application* app);
+struct SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
+char* readFile(char* filename);
+VkShaderModule createShaderModule(struct application* app, char* code);
+void drawFrame(struct application* app);
+void recreateSwapChain(struct application* app);
+static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
+void cleanupSwapChain(struct application* app);
+static VkVertexInputBindingDescription* getBindingDescription();
+static VkVertexInputAttributeDescription* getAttributeDescriptions(VkVertexInputAttributeDescription destination[2]);
+void createBuffer(struct application* app, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* bufferMemory);
+void copyBuffer(struct application* app, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+void createDescriptorPool(struct application* app);
+void createDescriptorSets(struct application* app);
+void updateUniformBuffer(struct application* app, uint32_t currentImage);
 
-uint32_t findMemoryType(struct application *app,uint32_t typeFilter, VkMemoryPropertyFlags properties);
+uint32_t findMemoryType(struct application* app, uint32_t typeFilter, VkMemoryPropertyFlags properties);
 
-VkVertexInputAttributeDescription *getAttributeDescriptions(VkVertexInputAttributeDescription destination[ATTRIBUTE_DESCRIPTION_COUNT])
+VkVertexInputAttributeDescription* getAttributeDescriptions(VkVertexInputAttributeDescription destination[ATTRIBUTE_DESCRIPTION_COUNT])
 {
-        VkVertexInputAttributeDescription attributeDescriptions[ATTRIBUTE_DESCRIPTION_COUNT];
-	memset(&attributeDescriptions,0,sizeof(attributeDescriptions[0])*ATTRIBUTE_DESCRIPTION_COUNT);
+	VkVertexInputAttributeDescription attributeDescriptions[ATTRIBUTE_DESCRIPTION_COUNT];
+	memset(&attributeDescriptions, 0, sizeof(attributeDescriptions[0]) * ATTRIBUTE_DESCRIPTION_COUNT);
 
-        attributeDescriptions[0].binding = 0;
-        attributeDescriptions[0].location = 0;
-        attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(struct Vertex, pos);
+	attributeDescriptions[0].binding = 0;
+	attributeDescriptions[0].location = 0;
+	attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT;
+	attributeDescriptions[0].offset = offsetof(struct Vertex, pos);
 
-        attributeDescriptions[1].binding = 0;
-        attributeDescriptions[1].location = 1;
-        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(struct Vertex, color);
+	attributeDescriptions[1].binding = 0;
+	attributeDescriptions[1].location = 1;
+	attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+	attributeDescriptions[1].offset = offsetof(struct Vertex, color);
 
-        memcpy(destination,attributeDescriptions,sizeof(attributeDescriptions)*ATTRIBUTE_DESCRIPTION_COUNT);
+	memcpy(destination, attributeDescriptions, sizeof(attributeDescriptions) * ATTRIBUTE_DESCRIPTION_COUNT);
 	return destination;
 }
 
-VkVertexInputBindingDescription *getBindingDescription(VkVertexInputBindingDescription destination[1])
+VkVertexInputBindingDescription* getBindingDescription(VkVertexInputBindingDescription destination[1])
 {
 	VkVertexInputBindingDescription bindingDescription[1];
-	memset(&bindingDescription,0,sizeof(bindingDescription));
+	memset(&bindingDescription, 0, sizeof(bindingDescription));
 	bindingDescription[0].binding = 0;
 	bindingDescription[0].stride = sizeof(struct Vertex);
 	bindingDescription[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-        memcpy(destination,bindingDescription,sizeof(bindingDescription[0]));
+	memcpy(destination, bindingDescription, sizeof(bindingDescription[0]));
 
 	return destination;
 }
 
-void createSurface(struct application *app) {
+void createSurface(struct application* app) {
 	if (glfwCreateWindowSurface(app->instance, app->window, NULL, &app->surface) != VK_SUCCESS) {
 		printf("failed to create window surface!");
 		exit(1);
 	}
 }
-void createLogicalDevice(struct application *app)
+void createLogicalDevice(struct application* app)
 {
-	struct QueueFamilyIndices indices = findQueueFamilies(app->physicalDevice,app->surface);
+	struct QueueFamilyIndices indices = findQueueFamilies(app->physicalDevice, app->surface);
 
 	float queuePriority = 1.0f;
 
@@ -210,32 +226,32 @@ void createLogicalDevice(struct application *app)
 	uint32_t queueCount = 0;
 
 
-	if(indices.graphicsFamily!=indices.presentFamily){
+	if (indices.graphicsFamily != indices.presentFamily) {
 		VkDeviceQueueCreateInfo queueCreateInfo;
-		memset(&queueCreateInfo,0,sizeof(queueCreateInfo));
+		memset(&queueCreateInfo, 0, sizeof(queueCreateInfo));
 		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		queueCreateInfo.queueFamilyIndex = indices.graphicsFamily;
 		queueCreateInfo.queueCount = 1;
 		queueCreateInfo.flags = 0;
 		queueCreateInfo.pQueuePriorities = &queuePriority;
-		memcpy(&queueCreateInfos[0],&queueCreateInfo,sizeof(queueCreateInfo));
+		memcpy(&queueCreateInfos[0], &queueCreateInfo, sizeof(queueCreateInfo));
 		queueCount++;
 	}
 	VkDeviceQueueCreateInfo queueCreateInfo;
-	memset(&queueCreateInfo,0,sizeof(queueCreateInfo));
+	memset(&queueCreateInfo, 0, sizeof(queueCreateInfo));
 	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 	queueCreateInfo.queueFamilyIndex = indices.presentFamily;
 	queueCreateInfo.queueCount = 1;
 	queueCreateInfo.flags = 0;
 	queueCreateInfo.pQueuePriorities = &queuePriority;
-	memcpy(&queueCreateInfos[queueCount],&queueCreateInfo,sizeof(queueCreateInfo));
+	memcpy(&queueCreateInfos[queueCount], &queueCreateInfo, sizeof(queueCreateInfo));
 	queueCount++;
 
 	VkPhysicalDeviceFeatures deviceFeatures;
-	memset(&deviceFeatures,0,sizeof(deviceFeatures));
+	memset(&deviceFeatures, 0, sizeof(deviceFeatures));
 
 	VkDeviceCreateInfo createInfo;
-	memset(&createInfo,0,sizeof(createInfo));
+	memset(&createInfo, 0, sizeof(createInfo));
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	createInfo.pQueueCreateInfos = &queueCreateInfos[0];
 	createInfo.queueCreateInfoCount = queueCount;
@@ -243,7 +259,7 @@ void createLogicalDevice(struct application *app)
 	createInfo.pEnabledFeatures = &deviceFeatures;
 
 	int i;
-	for(i=0;deviceExtensions[i]!=NULL;i++)
+	for (i = 0; deviceExtensions[i] != NULL; i++)
 		;
 	createInfo.enabledExtensionCount = i;
 	createInfo.ppEnabledExtensionNames = deviceExtensions;
@@ -251,7 +267,8 @@ void createLogicalDevice(struct application *app)
 	if (enableValidationLayers) {
 		createInfo.enabledLayerCount = ARRAY_SIZE(validationLayers);
 		createInfo.ppEnabledLayerNames = validationLayers;
-	} else {
+	}
+	else {
 		createInfo.enabledLayerCount = 0;
 	}
 
@@ -264,13 +281,13 @@ void createLogicalDevice(struct application *app)
 
 }
 
-void createSwapChain(struct application *app)
+void createSwapChain(struct application* app)
 {
-	struct SwapChainSupportDetails swapChainSupport = querySwapChainSupport(app->physicalDevice,app->surface);
+	struct SwapChainSupportDetails swapChainSupport = querySwapChainSupport(app->physicalDevice, app->surface);
 
-	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats,swapChainSupport.formatCount);
-	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes,swapChainSupport.presentModeCount);
-	VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities,app);
+	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats, swapChainSupport.formatCount);
+	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapChainSupport.presentModes, swapChainSupport.presentModeCount);
+	VkExtent2D extent = chooseSwapExtent(swapChainSupport.capabilities, app);
 
 	uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
 	if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount) {
@@ -278,7 +295,7 @@ void createSwapChain(struct application *app)
 	}
 
 	VkSwapchainCreateInfoKHR createInfo;
-	memset(&createInfo,0,sizeof(createInfo));
+	memset(&createInfo, 0, sizeof(createInfo));
 	createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
 	createInfo.surface = app->surface;
 
@@ -289,14 +306,15 @@ void createSwapChain(struct application *app)
 	createInfo.imageArrayLayers = 1;
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	struct QueueFamilyIndices indices = findQueueFamilies(app->physicalDevice,app->surface);
-	uint32_t queueFamilyIndices[] = {indices.graphicsFamily, indices.presentFamily};
+	struct QueueFamilyIndices indices = findQueueFamilies(app->physicalDevice, app->surface);
+	uint32_t queueFamilyIndices[] = { indices.graphicsFamily, indices.presentFamily };
 
 	if (indices.graphicsFamily != indices.presentFamily) {
 		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		createInfo.queueFamilyIndexCount = 2;
 		createInfo.pQueueFamilyIndices = queueFamilyIndices;
-	} else {
+	}
+	else {
 		createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	}
 
@@ -319,9 +337,9 @@ void createSwapChain(struct application *app)
 	app->swapChainExtent = extent;
 }
 
-VkSurfaceFormatKHR chooseSwapSurfaceFormat(const VkSurfaceFormatKHR *availableFormats, uint32_t formatCount) {
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(const VkSurfaceFormatKHR* availableFormats, uint32_t formatCount) {
 	int i;
-	for (i=0;i<formatCount;i++) {
+	for (i = 0; i < formatCount; i++) {
 		if (availableFormats[i].format == VK_FORMAT_B8G8R8A8_SRGB && availableFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
 			return availableFormats[i];
 		}
@@ -329,61 +347,62 @@ VkSurfaceFormatKHR chooseSwapSurfaceFormat(const VkSurfaceFormatKHR *availableFo
 
 	return availableFormats[0];
 }
- VkPresentModeKHR chooseSwapPresentMode(VkPresentModeKHR *availablePresentModes,uint32_t presentModeCount) {
+VkPresentModeKHR chooseSwapPresentMode(VkPresentModeKHR* availablePresentModes, uint32_t presentModeCount) {
 	int i;
-	for (i=0;i<presentModeCount;i++){
+	for (i = 0; i < presentModeCount; i++) {
 		if (availablePresentModes[i] == VK_PRESENT_MODE_MAILBOX_KHR) {
 			return availablePresentModes[i];
 		}
 	}
 	return VK_PRESENT_MODE_FIFO_KHR;
 }
-VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR capabilities,struct application *app) {
+VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR capabilities, struct application* app) {
 	if (capabilities.currentExtent.width != UINT32_MAX) {
 		return capabilities.currentExtent;
-	} else {
+	}
+	else {
 		int width, height;
 		glfwGetFramebufferSize(app->window, &width, &height);
 		VkExtent2D actualExtent = { (uint32_t)width, (uint32_t)height
-	};
+		};
 
-	actualExtent.width = capabilities.maxImageExtent.width > actualExtent.width ? actualExtent.width : capabilities.maxImageExtent.width;
-	actualExtent.width = capabilities.minImageExtent.width > actualExtent.width ? capabilities.minImageExtent.width : actualExtent.width;
-	actualExtent.height = capabilities.maxImageExtent.height > actualExtent.height ? actualExtent.height : capabilities.maxImageExtent.height;
-	actualExtent.height = capabilities.minImageExtent.height > actualExtent.height ? capabilities.minImageExtent.height : actualExtent.height;
+		actualExtent.width = capabilities.maxImageExtent.width > actualExtent.width ? actualExtent.width : capabilities.maxImageExtent.width;
+		actualExtent.width = capabilities.minImageExtent.width > actualExtent.width ? capabilities.minImageExtent.width : actualExtent.width;
+		actualExtent.height = capabilities.maxImageExtent.height > actualExtent.height ? actualExtent.height : capabilities.maxImageExtent.height;
+		actualExtent.height = capabilities.minImageExtent.height > actualExtent.height ? capabilities.minImageExtent.height : actualExtent.height;
 
-	return actualExtent;
+		return actualExtent;
 	}
 }
 
-struct SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device,VkSurfaceKHR surface)
+struct SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
 	struct SwapChainSupportDetails details;
-	memset(&details,0,sizeof(details));
+	memset(&details, 0, sizeof(details));
 
 	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &details.capabilities);
 
 	uint32_t formatCount;
 	uint32_t presentModeCount;
-        vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, NULL);
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, NULL);
 	if (formatCount != 0) {
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats);
-        }
-	
-        vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, NULL);
+	}
+
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, NULL);
 	if (presentModeCount != 0) {
 		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes);
-        }
-	details.presentModeCount=presentModeCount;
-	details.formatCount=formatCount;
+	}
+	details.presentModeCount = presentModeCount;
+	details.formatCount = formatCount;
 	return details;
 }
-void createImageViews(struct application *app) {
+void createImageViews(struct application* app) {
 
 	size_t i;
 	for (i = 0; i < app->imageCount; i++) {
 		VkImageViewCreateInfo createInfo;
-		memset(&createInfo,0,sizeof(createInfo));
+		memset(&createInfo, 0, sizeof(createInfo));
 		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 		createInfo.image = app->swapChainImages[i];
 		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
@@ -399,15 +418,15 @@ void createImageViews(struct application *app) {
 		createInfo.subresourceRange.layerCount = 1;
 
 		if (vkCreateImageView(app->device, &createInfo, NULL, &app->swapChainImageViews[i]) != VK_SUCCESS) {
-		printf("failed to create image views!");
-		exit(1);
+			printf("failed to create image views!");
+			exit(1);
 		}
 	}
 }
-void createRenderPass(struct application *app)
+void createRenderPass(struct application* app)
 {
 	VkAttachmentDescription colorAttachment;
-	memset(&colorAttachment,0,sizeof(colorAttachment));
+	memset(&colorAttachment, 0, sizeof(colorAttachment));
 	colorAttachment.format = app->swapChainImageFormat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -418,18 +437,18 @@ void createRenderPass(struct application *app)
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentReference colorAttachmentRef;
-	memset(&colorAttachmentRef,0,sizeof(colorAttachmentRef));
+	memset(&colorAttachmentRef, 0, sizeof(colorAttachmentRef));
 	colorAttachmentRef.attachment = 0;
 	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
 	VkSubpassDescription subpass;
-	memset(&subpass,0,sizeof(subpass));
+	memset(&subpass, 0, sizeof(subpass));
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
 	subpass.pColorAttachments = &colorAttachmentRef;
 
 	VkRenderPassCreateInfo renderPassInfo;
-	memset(&renderPassInfo,0,sizeof(renderPassInfo));
+	memset(&renderPassInfo, 0, sizeof(renderPassInfo));
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 	renderPassInfo.attachmentCount = 1;
 	renderPassInfo.pAttachments = &colorAttachment;
@@ -443,21 +462,21 @@ void createRenderPass(struct application *app)
 
 }
 
-void createDescriptorSetLayout(struct application *app)
+void createDescriptorSetLayout(struct application* app)
 {
-      VkDescriptorSetLayoutBinding uboLayoutBinding;
-      memset(&uboLayoutBinding,0,sizeof(uboLayoutBinding));
-      uboLayoutBinding.binding = 0;
-      uboLayoutBinding.descriptorCount = 1;
-      uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-      uboLayoutBinding.pImmutableSamplers = NULL;
-      uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	VkDescriptorSetLayoutBinding uboLayoutBinding;
+	memset(&uboLayoutBinding, 0, sizeof(uboLayoutBinding));
+	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.descriptorCount = 1;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.pImmutableSamplers = NULL;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-     VkDescriptorSetLayoutCreateInfo layoutInfo;
-      memset(&layoutInfo,0,sizeof(layoutInfo));
-      layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-      layoutInfo.bindingCount = 1;
-      layoutInfo.pBindings = &uboLayoutBinding;
+	VkDescriptorSetLayoutCreateInfo layoutInfo;
+	memset(&layoutInfo, 0, sizeof(layoutInfo));
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = 1;
+	layoutInfo.pBindings = &uboLayoutBinding;
 
 	if (vkCreateDescriptorSetLayout(app->device, &layoutInfo, NULL, &(app->descriptorSetLayout)) != VK_SUCCESS) {
 		printf("failed to create descriptor set layout!");
@@ -465,31 +484,29 @@ void createDescriptorSetLayout(struct application *app)
 	}
 }
 
-void createGraphicsPipeline(struct application *app)
+void createGraphicsPipeline(struct application* app)
 {
-	//char *vertShaderCode = readFile("shaders/vert.spv");
-	//char *fragShaderCode = readFile("shaders/frag.spv");
-        VkShaderModule vertShaderModule = createShaderModule(app,"shaders/vert.spv");
-        VkShaderModule fragShaderModule = createShaderModule(app,"shaders/frag.spv");
+	VkShaderModule vertShaderModule = createShaderModule(app, "shaders/vert.spv");
+	VkShaderModule fragShaderModule = createShaderModule(app, "shaders/frag.spv");
 
-        VkPipelineShaderStageCreateInfo vertShaderStageInfo;
-	memset(&vertShaderStageInfo,0,sizeof(vertShaderStageInfo));
-        vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-        vertShaderStageInfo.module = vertShaderModule;
-        vertShaderStageInfo.pName = "main";
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo;
+	memset(&vertShaderStageInfo, 0, sizeof(vertShaderStageInfo));
+	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderStageInfo.module = vertShaderModule;
+	vertShaderStageInfo.pName = "main";
 
-        VkPipelineShaderStageCreateInfo fragShaderStageInfo;
-	memset(&fragShaderStageInfo,0,sizeof(fragShaderStageInfo));
-        fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-        fragShaderStageInfo.module = fragShaderModule;
-        fragShaderStageInfo.pName = "main";
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo;
+	memset(&fragShaderStageInfo, 0, sizeof(fragShaderStageInfo));
+	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragShaderStageInfo.module = fragShaderModule;
+	fragShaderStageInfo.pName = "main";
 
-        VkPipelineShaderStageCreateInfo shaderStages[2] = {vertShaderStageInfo, fragShaderStageInfo};
+	VkPipelineShaderStageCreateInfo shaderStages[2] = { vertShaderStageInfo, fragShaderStageInfo };
 
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
-	memset(&vertexInputInfo,0,sizeof(vertexInputInfo));
+	memset(&vertexInputInfo, 0, sizeof(vertexInputInfo));
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 
 	VkVertexInputBindingDescription bindingDescription;
@@ -501,31 +518,31 @@ void createGraphicsPipeline(struct application *app)
 	vertexInputInfo.vertexBindingDescriptionCount = 1;
 	vertexInputInfo.vertexAttributeDescriptionCount = (uint32_t)ATTRIBUTE_DESCRIPTION_COUNT;
 	vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-	vertexInputInfo.pVertexAttributeDescriptions = (VkVertexInputAttributeDescription *)&attributeDescriptions;
+	vertexInputInfo.pVertexAttributeDescriptions = (VkVertexInputAttributeDescription*)&attributeDescriptions;
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly;
-	memset(&inputAssembly,0,sizeof(inputAssembly));
+	memset(&inputAssembly, 0, sizeof(inputAssembly));
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 	VkViewport viewport;
-	memset(&viewport,0,sizeof(viewport));
+	memset(&viewport, 0, sizeof(viewport));
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float) app->swapChainExtent.width;
-	viewport.height = (float) app->swapChainExtent.height;
+	viewport.width = (float)app->swapChainExtent.width;
+	viewport.height = (float)app->swapChainExtent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor;
-	memset(&scissor,0,sizeof(scissor));
+	memset(&scissor, 0, sizeof(scissor));
 	scissor.offset.x = 0;
 	scissor.offset.y = 0;
 	scissor.extent = app->swapChainExtent;
 
 	VkPipelineViewportStateCreateInfo viewportState;
-	memset(&viewportState,0,sizeof(viewportState));
+	memset(&viewportState, 0, sizeof(viewportState));
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportState.viewportCount = 1;
 	viewportState.pViewports = &viewport;
@@ -533,7 +550,7 @@ void createGraphicsPipeline(struct application *app)
 	viewportState.pScissors = &scissor;
 
 	VkPipelineRasterizationStateCreateInfo rasterizer;
-	memset(&rasterizer,0,sizeof(rasterizer));
+	memset(&rasterizer, 0, sizeof(rasterizer));
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rasterizer.depthClampEnable = VK_FALSE;
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
@@ -545,18 +562,18 @@ void createGraphicsPipeline(struct application *app)
 	rasterizer.depthBiasEnable = VK_FALSE;
 
 	VkPipelineMultisampleStateCreateInfo multisampling;
-	memset(&multisampling,0,sizeof(multisampling));
+	memset(&multisampling, 0, sizeof(multisampling));
 	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
 	multisampling.sampleShadingEnable = VK_FALSE;
 	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment;
-	memset(&colorBlendAttachment,0,sizeof(colorBlendAttachment));
+	memset(&colorBlendAttachment, 0, sizeof(colorBlendAttachment));
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 	colorBlendAttachment.blendEnable = VK_FALSE;
 
 	VkPipelineColorBlendStateCreateInfo colorBlending;
-	memset(&colorBlending,0,sizeof(colorBlending));
+	memset(&colorBlending, 0, sizeof(colorBlending));
 	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	colorBlending.logicOpEnable = VK_FALSE;
 	colorBlending.logicOp = VK_LOGIC_OP_COPY;
@@ -568,7 +585,7 @@ void createGraphicsPipeline(struct application *app)
 	colorBlending.blendConstants[3] = 0.0f;
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo;
-	memset(&pipelineLayoutInfo,0,sizeof(pipelineLayoutInfo));
+	memset(&pipelineLayoutInfo, 0, sizeof(pipelineLayoutInfo));
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = 1;
 	pipelineLayoutInfo.pSetLayouts = &app->descriptorSetLayout;
@@ -579,7 +596,7 @@ void createGraphicsPipeline(struct application *app)
 		exit(1);
 	}
 	VkGraphicsPipelineCreateInfo pipelineInfo;
-	memset(&pipelineInfo,0,sizeof(pipelineInfo));
+	memset(&pipelineInfo, 0, sizeof(pipelineInfo));
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineInfo.stageCount = 2;
 	pipelineInfo.pStages = shaderStages;
@@ -599,34 +616,34 @@ void createGraphicsPipeline(struct application *app)
 		exit(1);
 	}
 
-        vkDestroyShaderModule(app->device, fragShaderModule, NULL);
-        vkDestroyShaderModule(app->device, vertShaderModule, NULL);
+	vkDestroyShaderModule(app->device, fragShaderModule, NULL);
+	vkDestroyShaderModule(app->device, vertShaderModule, NULL);
 }
 
-VkShaderModule createShaderModule(struct application *app,char *filename)
+VkShaderModule createShaderModule(struct application* app, char* filename)
 {
-	char *code = 0;
+	char* code = 0;
 	long length;
-	FILE *f = fopen (filename, "r");
+	FILE* f = fopen(filename, "rb");
 	if (f) {
 		fseek(f, 0, SEEK_END);
 		length = ftell(f);
 		fseek(f, 0, SEEK_SET);
 		code = malloc(length);
-		if(code) {
+		if (code) {
 			fread(code, 1, length, f);
 		}
 		fclose(f);
 	}
-	else{
-		printf("unable to open %s\n",filename);
+	else {
+		printf("unable to open %s\n", filename);
 		exit(1);
 	}
 	VkShaderModuleCreateInfo createInfo;
-	memset(&createInfo,0,sizeof(createInfo));
+	memset(&createInfo, 0, sizeof(createInfo));
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	createInfo.codeSize = length;
-	createInfo.pCode = (uint32_t*) code;
+	createInfo.pCode = (uint32_t*)code;
 
 	VkShaderModule shaderModule;
 	if (vkCreateShaderModule(app->device, &createInfo, NULL, &shaderModule) != VK_SUCCESS) {
@@ -637,7 +654,7 @@ VkShaderModule createShaderModule(struct application *app,char *filename)
 	return shaderModule;
 }
 
-void createFramebuffers(struct application *app)
+void createFramebuffers(struct application* app)
 {
 	size_t i;
 	app->currentFrame = 0;
@@ -649,7 +666,7 @@ void createFramebuffers(struct application *app)
 		};
 
 		VkFramebufferCreateInfo framebufferInfo;
-		memset(&framebufferInfo,0,sizeof(framebufferInfo));
+		memset(&framebufferInfo, 0, sizeof(framebufferInfo));
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = app->renderPass;
 		framebufferInfo.attachmentCount = 1;
@@ -664,166 +681,172 @@ void createFramebuffers(struct application *app)
 		}
 	}
 }
-void createCommandPool(struct application *app)
+void createCommandPool(struct application* app)
 {
-	struct QueueFamilyIndices queueFamilyIndices = findQueueFamilies(app->physicalDevice,app->surface);
+	struct QueueFamilyIndices queueFamilyIndices = findQueueFamilies(app->physicalDevice, app->surface);
 
 	VkCommandPoolCreateInfo poolInfo;
-	memset(&poolInfo,0,sizeof(poolInfo));
+	memset(&poolInfo, 0, sizeof(poolInfo));
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
 
-	if(vkCreateCommandPool(app->device, &poolInfo, NULL, &(app->commandPool)) != VK_SUCCESS) {
+	if (vkCreateCommandPool(app->device, &poolInfo, NULL, &(app->commandPool)) != VK_SUCCESS) {
 		printf("failed to create command pool!");
 		exit(1);
 	}
 }
 
-void createUniformBuffers(struct application *app)
+void createUniformBuffers(struct application* app)
 {
-        VkDeviceSize bufferSize = sizeof(struct UniformBufferObject);
+	VkDeviceSize bufferSize = sizeof(struct UniformBufferObject);
 
-      size_t i;
-        for(i = 0; i < app->imageCount; i++) {
-              createBuffer(app,bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &app->uniformBuffers[i], &app->uniformBuffersMemory[i]);
-        }
+	size_t i;
+	for (i = 0; i < app->imageCount; i++) {
+		createBuffer(app, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &app->uniformBuffers[i], &app->uniformBuffersMemory[i]);
+	}
 }
 
-void createDescriptorPool(struct application *app) {
-      VkDescriptorPoolSize poolSize;
-      memset(&poolSize,0,sizeof(poolSize));
-      poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-      poolSize.descriptorCount = (uint32_t)app->imageCount;
+void createDescriptorPool(struct application* app) {
+	VkDescriptorPoolSize poolSize;
+	memset(&poolSize, 0, sizeof(poolSize));
+	poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSize.descriptorCount = (uint32_t)app->imageCount;
 
-      VkDescriptorPoolCreateInfo poolInfo;
-      memset(&poolInfo,0,sizeof(poolInfo));
-      poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-      poolInfo.poolSizeCount = 1;
-      poolInfo.pPoolSizes = &poolSize;
-      poolInfo.maxSets = (uint32_t)app->imageCount;
+	VkDescriptorPoolCreateInfo poolInfo;
+	memset(&poolInfo, 0, sizeof(poolInfo));
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = 1;
+	poolInfo.pPoolSizes = &poolSize;
+	poolInfo.maxSets = (uint32_t)app->imageCount;
 
-      if (vkCreateDescriptorPool(app->device, &poolInfo, NULL, &app->descriptorPool) != VK_SUCCESS) {
-              printf("failed to create descriptor pool!");
-              exit(1);
-      }
+	if (vkCreateDescriptorPool(app->device, &poolInfo, NULL, &app->descriptorPool) != VK_SUCCESS) {
+		printf("failed to create descriptor pool!");
+		exit(1);
+	}
 }
-void createDescriptorSets(struct application *app)
+void createDescriptorSets(struct application* app)
 {
-        VkDescriptorSetLayout layouts[app->imageCount];
-      int i;
-      for(i=0;i<app->imageCount;i++){
-              memcpy(&layouts[i], &app->descriptorSetLayout,sizeof(app->descriptorSetLayout));
-      }
+	VkDescriptorSetLayout* layouts;
+	layouts = malloc(sizeof(*layouts) * app->imageCount);
+	if (!layouts) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
+	int i;
+	for (i = 0; i < app->imageCount; i++) {
+		memcpy(&layouts[i], &app->descriptorSetLayout, sizeof(app->descriptorSetLayout));
+	}
 
-        VkDescriptorSetAllocateInfo allocInfo;
-      memset(&allocInfo,0,sizeof(allocInfo));
-        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = app->descriptorPool;
-        allocInfo.descriptorSetCount = app->imageCount;
-        allocInfo.pSetLayouts = layouts;
+	VkDescriptorSetAllocateInfo allocInfo;
+	memset(&allocInfo, 0, sizeof(allocInfo));
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = app->descriptorPool;
+	allocInfo.descriptorSetCount = app->imageCount;
+	allocInfo.pSetLayouts = layouts;
 
-        if (vkAllocateDescriptorSets(app->device, &allocInfo, app->descriptorSets) != VK_SUCCESS) {
-              printf("failed to allocate descriptor sets!");
-              exit(1);
-        }
+	if (vkAllocateDescriptorSets(app->device, &allocInfo, app->descriptorSets) != VK_SUCCESS) {
+		printf("failed to allocate descriptor sets!");
+		exit(1);
+	}
 
-        for (size_t i = 0; i < app->imageCount; i++) {
-              VkDescriptorBufferInfo bufferInfo;
-              memset(&bufferInfo,0,sizeof(bufferInfo));
+	for (size_t i = 0; i < app->imageCount; i++) {
+		VkDescriptorBufferInfo bufferInfo;
+		memset(&bufferInfo, 0, sizeof(bufferInfo));
 
-              bufferInfo.buffer = app->uniformBuffers[i];
-              bufferInfo.offset = 0;
-              bufferInfo.range = sizeof(struct UniformBufferObject);
+		bufferInfo.buffer = app->uniformBuffers[i];
+		bufferInfo.offset = 0;
+		bufferInfo.range = sizeof(struct UniformBufferObject);
 
-              VkWriteDescriptorSet descriptorWrite;
-              memset(&descriptorWrite,0,sizeof(descriptorWrite));
-              descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-              descriptorWrite.dstSet = app->descriptorSets[i];
-              descriptorWrite.dstBinding = 0;
-              descriptorWrite.dstArrayElement = 0;
-              descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-              descriptorWrite.descriptorCount = 1;
-              descriptorWrite.pBufferInfo = &bufferInfo;
-	      descriptorWrite.pImageInfo = NULL;
-	      descriptorWrite.pTexelBufferView = NULL;
+		VkWriteDescriptorSet descriptorWrite;
+		memset(&descriptorWrite, 0, sizeof(descriptorWrite));
+		descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		descriptorWrite.dstSet = app->descriptorSets[i];
+		descriptorWrite.dstBinding = 0;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pBufferInfo = &bufferInfo;
+		descriptorWrite.pImageInfo = NULL;
+		descriptorWrite.pTexelBufferView = NULL;
 
-              vkUpdateDescriptorSets(app->device, 1, &descriptorWrite, 0, NULL);
-        }
+		vkUpdateDescriptorSets(app->device, 1, &descriptorWrite, 0, NULL);
+	}
+	free(layouts);
 }
 
 
 
-void createVertexBuffer(struct application *app)
+void createVertexBuffer(struct application* app)
 {
-	VkDeviceSize bufferSize = sizeof(vertices[0])*4; /*magic number is number of vertices*/
+	VkDeviceSize bufferSize = sizeof(vertices[0]) * 4; /*magic number is number of vertices*/
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
-	createBuffer(app,bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory);
+	createBuffer(app, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory);
 
 	void* data;
 	vkMapMemory(app->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-	    memcpy(data, vertices, (size_t) bufferSize);
+	memcpy(data, vertices, (size_t)bufferSize);
 	vkUnmapMemory(app->device, stagingBufferMemory);
-	createBuffer(app,bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT| VK_BUFFER_USAGE_VERTEX_BUFFER_BIT , VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->vertexBuffer, &app->vertexBufferMemory);
-	copyBuffer(app,stagingBuffer,app->vertexBuffer,bufferSize);
+	createBuffer(app, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->vertexBuffer, &app->vertexBufferMemory);
+	copyBuffer(app, stagingBuffer, app->vertexBuffer, bufferSize);
 
-	vkDestroyBuffer(app->device,stagingBuffer,NULL);
-	vkFreeMemory(app->device,stagingBufferMemory,NULL);
+	vkDestroyBuffer(app->device, stagingBuffer, NULL);
+	vkFreeMemory(app->device, stagingBufferMemory, NULL);
 }
-void createIndexBuffer(struct application *app) {
+void createIndexBuffer(struct application* app) {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * 6;/*magic number is number of indices*/
 
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingBufferMemory;
-	createBuffer(app,bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory);
+	createBuffer(app, bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, &stagingBufferMemory);
 
 	void* data;
 	vkMapMemory(app->device, stagingBufferMemory, 0, bufferSize, 0, &data);
-	memcpy(data, indices, (size_t) bufferSize);
+	memcpy(data, indices, (size_t)bufferSize);
 	vkUnmapMemory(app->device, stagingBufferMemory);
 
-	createBuffer(app,bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->indexBuffer, &app->indexBufferMemory);
+	createBuffer(app, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &app->indexBuffer, &app->indexBufferMemory);
 
-	copyBuffer(app,stagingBuffer, app->indexBuffer, bufferSize);
+	copyBuffer(app, stagingBuffer, app->indexBuffer, bufferSize);
 
 	vkDestroyBuffer(app->device, stagingBuffer, NULL);
 	vkFreeMemory(app->device, stagingBufferMemory, NULL);
 }
 
-void createBuffer(struct application *app,VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer *buffer, VkDeviceMemory *bufferMemory) {
-        VkBufferCreateInfo bufferInfo;
-	memset(&bufferInfo,0,sizeof(bufferInfo));
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+void createBuffer(struct application* app, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer* buffer, VkDeviceMemory* bufferMemory) {
+	VkBufferCreateInfo bufferInfo;
+	memset(&bufferInfo, 0, sizeof(bufferInfo));
+	bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferInfo.size = size;
+	bufferInfo.usage = usage;
+	bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-        if (vkCreateBuffer(app->device, &bufferInfo, NULL, buffer) != VK_SUCCESS) {
+	if (vkCreateBuffer(app->device, &bufferInfo, NULL, buffer) != VK_SUCCESS) {
 		printf("failed to create buffer!");
 		exit(1);
-        }
+	}
 
-        VkMemoryRequirements memRequirements;
-        vkGetBufferMemoryRequirements(app->device, *buffer, &memRequirements);
+	VkMemoryRequirements memRequirements;
+	vkGetBufferMemoryRequirements(app->device, *buffer, &memRequirements);
 
-        VkMemoryAllocateInfo allocInfo;
-	memset(&allocInfo,0,sizeof(allocInfo));
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = findMemoryType(app, memRequirements.memoryTypeBits, properties);
+	VkMemoryAllocateInfo allocInfo;
+	memset(&allocInfo, 0, sizeof(allocInfo));
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.allocationSize = memRequirements.size;
+	allocInfo.memoryTypeIndex = findMemoryType(app, memRequirements.memoryTypeBits, properties);
 
-        if (vkAllocateMemory(app->device, &allocInfo, NULL, bufferMemory) != VK_SUCCESS) {
+	if (vkAllocateMemory(app->device, &allocInfo, NULL, bufferMemory) != VK_SUCCESS) {
 		printf("failed to allocate buffer memory!");
 		exit(1);
-        }
+	}
 
-        vkBindBufferMemory(app->device, *buffer, *bufferMemory, 0);
+	vkBindBufferMemory(app->device, *buffer, *bufferMemory, 0);
 }
 
-void copyBuffer(struct application *app,VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+void copyBuffer(struct application* app, VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
 {
 	VkCommandBufferAllocateInfo allocInfo;
-	memset(&allocInfo,0,sizeof(allocInfo));
+	memset(&allocInfo, 0, sizeof(allocInfo));
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.commandPool = app->commandPool;
@@ -833,21 +856,21 @@ void copyBuffer(struct application *app,VkBuffer srcBuffer, VkBuffer dstBuffer, 
 	vkAllocateCommandBuffers(app->device, &allocInfo, &commandBuffer);
 
 	VkCommandBufferBeginInfo beginInfo;
-	memset(&beginInfo,0,sizeof(beginInfo));
+	memset(&beginInfo, 0, sizeof(beginInfo));
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
 	vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
 	VkBufferCopy copyRegion;
-	memset(&copyRegion,0,sizeof(copyRegion));
+	memset(&copyRegion, 0, sizeof(copyRegion));
 	copyRegion.size = size;
 	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
 	vkEndCommandBuffer(commandBuffer);
 
 	VkSubmitInfo submitInfo;
-	memset(&submitInfo,0,sizeof(submitInfo));
+	memset(&submitInfo, 0, sizeof(submitInfo));
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &commandBuffer;
@@ -858,31 +881,31 @@ void copyBuffer(struct application *app,VkBuffer srcBuffer, VkBuffer dstBuffer, 
 	vkFreeCommandBuffers(app->device, app->commandPool, 1, &commandBuffer);
 }
 
-uint32_t findMemoryType(struct application *app,uint32_t typeFilter, VkMemoryPropertyFlags properties)
+uint32_t findMemoryType(struct application* app, uint32_t typeFilter, VkMemoryPropertyFlags properties)
 {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(app->physicalDevice, &memProperties);
 
 	uint32_t i;
 	for (i = 0; i < memProperties.memoryTypeCount; i++) {
-	    if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-		return i;
-	    }
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+			return i;
+		}
 	}
 
 	printf("failed to find suitable memory type!");
 	exit(1);
 }
 
-void createCommandBuffers(struct application *app)
+void createCommandBuffers(struct application* app)
 {
-	app->commandBuffers = malloc(sizeof(VkCommandBuffer)* app->imageCount);
+	app->commandBuffers = malloc(sizeof(VkCommandBuffer) * app->imageCount);
 	VkCommandBufferAllocateInfo allocInfo;
-	memset(&allocInfo,0,sizeof(allocInfo));
+	memset(&allocInfo, 0, sizeof(allocInfo));
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.commandPool = app->commandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandBufferCount =  app->imageCount;
+	allocInfo.commandBufferCount = app->imageCount;
 
 	if (vkAllocateCommandBuffers(app->device, &allocInfo, app->commandBuffers) != VK_SUCCESS) {
 		printf("failed to allocate command buffers!");
@@ -892,7 +915,7 @@ void createCommandBuffers(struct application *app)
 	size_t i;
 	for (i = 0; i < app->imageCount; i++) {
 		VkCommandBufferBeginInfo beginInfo;
-		memset(&beginInfo,0,sizeof(beginInfo));
+		memset(&beginInfo, 0, sizeof(beginInfo));
 		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
 		if (vkBeginCommandBuffer(app->commandBuffers[i], &beginInfo) != VK_SUCCESS) {
@@ -901,7 +924,7 @@ void createCommandBuffers(struct application *app)
 		}
 
 		VkRenderPassBeginInfo renderPassInfo;
-		memset(&renderPassInfo,0,sizeof(renderPassInfo));
+		memset(&renderPassInfo, 0, sizeof(renderPassInfo));
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 		renderPassInfo.renderPass = app->renderPass;
 		renderPassInfo.framebuffer = app->swapChainFramebuffers[i];
@@ -921,15 +944,15 @@ void createCommandBuffers(struct application *app)
 
 		vkCmdBindPipeline(app->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, app->graphicsPipeline);
 
-		VkBuffer vertexBuffers[] = {app->vertexBuffer};
-		VkDeviceSize offsets[] = {0};
+		VkBuffer vertexBuffers[] = { app->vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
 		vkCmdBindVertexBuffers(app->commandBuffers[i], 0, 1, vertexBuffers, offsets);
 
-		vkCmdBindIndexBuffer(app->commandBuffers[i],app->indexBuffer,0,VK_INDEX_TYPE_UINT16);
+		vkCmdBindIndexBuffer(app->commandBuffers[i], app->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-		vkCmdBindDescriptorSets(app->commandBuffers[i],VK_PIPELINE_BIND_POINT_GRAPHICS,app->pipelineLayout,0,1,&app->descriptorSets[i],0,NULL);
+		vkCmdBindDescriptorSets(app->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, app->pipelineLayout, 0, 1, &app->descriptorSets[i], 0, NULL);
 
-		vkCmdDrawIndexed(app->commandBuffers[i], (uint32_t)6,1,0,0,0);/*magic number 6 is number of indices*/
+		vkCmdDrawIndexed(app->commandBuffers[i], (uint32_t)6, 1, 0, 0, 0);/*magic number 6 is number of indices*/
 
 		vkCmdEndRenderPass(app->commandBuffers[i]);
 
@@ -940,69 +963,69 @@ void createCommandBuffers(struct application *app)
 	}
 }
 
-void createSyncObjects(struct application *app)
+void createSyncObjects(struct application* app)
 {
 	//app->imagesInFlight = (VkFence*)malloc(sizeof(app->imagesInFlight)*app->imageCount);
-	memset(&app->imagesInFlight, VK_NULL_HANDLE,app->imageCount);
+	memset(&app->imagesInFlight, VK_NULL_HANDLE, app->imageCount);
 
 	VkSemaphoreCreateInfo semaphoreInfo;
-	memset(&semaphoreInfo,0,sizeof(semaphoreInfo));
+	memset(&semaphoreInfo, 0, sizeof(semaphoreInfo));
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 	VkFenceCreateInfo fenceInfo;
-	memset(&fenceInfo,0,sizeof(fenceInfo));
+	memset(&fenceInfo, 0, sizeof(fenceInfo));
 	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 	fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
 	size_t i;
 	for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		if (vkCreateSemaphore(app->device, &semaphoreInfo, NULL, &(app->imageAvailableSemaphores[i])) != VK_SUCCESS ||
-		vkCreateSemaphore(app->device, &semaphoreInfo, NULL, &(app->renderFinishedSemaphores[i])) != VK_SUCCESS ||
-		vkCreateFence(app->device, &fenceInfo, NULL, &(app->inFlightFences[i])) != VK_SUCCESS) {
+			vkCreateSemaphore(app->device, &semaphoreInfo, NULL, &(app->renderFinishedSemaphores[i])) != VK_SUCCESS ||
+			vkCreateFence(app->device, &fenceInfo, NULL, &(app->inFlightFences[i])) != VK_SUCCESS) {
 			printf("failed to create synchronization objects for a frame!");
 			exit(1);
 		}
 	}
 }
-void updateUniformBuffer(struct application *app, uint32_t currentImage)
+void updateUniformBuffer(struct application* app, uint32_t currentImage)
 {
 	static struct timespec startTime;
 	static int firstRun = 0;
-	if(!firstRun){
-	      clock_gettime(CLOCK_MONOTONIC,&startTime);
-	      firstRun++;
+	if (!firstRun) {
+		clock_gettime(CLOCK_MONOTONIC, &startTime);
+		firstRun++;
 	}
 	struct timespec currentTime;
-	clock_gettime(CLOCK_MONOTONIC,&currentTime);
+	clock_gettime(CLOCK_MONOTONIC, &currentTime);
 
-        float time = currentTime.tv_sec-startTime.tv_sec + (currentTime.tv_nsec-startTime.tv_nsec)*1.0/1000000000;
+	float time = currentTime.tv_sec - startTime.tv_sec + (currentTime.tv_nsec - startTime.tv_nsec) * 1.0 / 1000000000;
 
 	struct UniformBufferObject ubo;
-	
-	memset(&ubo,0,sizeof(ubo));
+
+	memset(&ubo, 0, sizeof(ubo));
 	int i;
-	for(i=0;i<4;i++){
-	      ubo.model[i][i]=1.0f;
+	for (i = 0; i < 4; i++) {
+		ubo.model[i][i] = 1.0f;
 	}
-	vec3 axis = {0.0f,0.0f,1.0f};
-	vec3 eye = {2.0f,2.0f,2.0f};
-	vec3 center = {0.0f,0.0f,0.0f};
-	vec3 up = {0.0f,0.0f,1.0f};
+	vec3 axis = { 0.0f,0.0f,1.0f };
+	vec3 eye = { 2.0f,2.0f,2.0f };
+	vec3 center = { 0.0f,0.0f,0.0f };
+	vec3 up = { 0.0f,0.0f,1.0f };
 
-        glm_rotate(ubo.model, time * radians(90.0f), axis);
+	glm_rotate(ubo.model, time * radians(90.0f), axis);
 
-        glm_lookat(eye, center, up,ubo.view);
+	glm_lookat(eye, center, up, ubo.view);
 
-        glm_perspective(radians(45.0f), app->swapChainExtent.width / (float) app->swapChainExtent.height, 0.1f, 10.0f,ubo.proj);
-	
-        ubo.proj[1][1] *= -1;
+	glm_perspective(radians(45.0f), app->swapChainExtent.width / (float)app->swapChainExtent.height, 0.1f, 10.0f, ubo.proj);
 
-        void* data;
-        vkMapMemory(app->device, app->uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-            memcpy(data, &ubo, sizeof(ubo));
-        vkUnmapMemory(app->device, app->uniformBuffersMemory[currentImage]);
+	ubo.proj[1][1] *= -1;
+
+	void* data;
+	vkMapMemory(app->device, app->uniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vkUnmapMemory(app->device, app->uniformBuffersMemory[currentImage]);
 }
 
-void drawFrame(struct application *app)
+void drawFrame(struct application* app)
 {
 	vkWaitForFences(app->device, 1, &(app->inFlightFences[app->currentFrame]), VK_TRUE, UINT64_MAX);
 
@@ -1011,12 +1034,13 @@ void drawFrame(struct application *app)
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		recreateSwapChain(app);
 		return;
-	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+	}
+	else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
 		printf("failed to acquire swap chain image!");
 		exit(1);
 	}
 
-	updateUniformBuffer(app,imageIndex); 
+	updateUniformBuffer(app, imageIndex);
 
 	if (app->imagesInFlight[imageIndex] != VK_NULL_HANDLE) {
 		vkWaitForFences(app->device, 1, &(app->imagesInFlight[imageIndex]), VK_TRUE, UINT64_MAX);
@@ -1024,11 +1048,11 @@ void drawFrame(struct application *app)
 	app->imagesInFlight[imageIndex] = app->inFlightFences[app->currentFrame];
 
 	VkSubmitInfo submitInfo;
-	memset(&submitInfo,0,sizeof(submitInfo));
+	memset(&submitInfo, 0, sizeof(submitInfo));
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphores[] = {app->imageAvailableSemaphores[app->currentFrame]};
-	VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+	VkSemaphore waitSemaphores[] = { app->imageAvailableSemaphores[app->currentFrame] };
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.waitSemaphoreCount = 1;
 	submitInfo.pWaitSemaphores = waitSemaphores;
 	submitInfo.pWaitDstStageMask = waitStages;
@@ -1036,7 +1060,7 @@ void drawFrame(struct application *app)
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &app->commandBuffers[imageIndex];
 
-	VkSemaphore signalSemaphores[] = {app->renderFinishedSemaphores[app->currentFrame]};
+	VkSemaphore signalSemaphores[] = { app->renderFinishedSemaphores[app->currentFrame] };
 	submitInfo.signalSemaphoreCount = 1;
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
@@ -1048,13 +1072,13 @@ void drawFrame(struct application *app)
 	}
 
 	VkPresentInfoKHR presentInfo;
-	memset(&presentInfo,0,sizeof(presentInfo));
+	memset(&presentInfo, 0, sizeof(presentInfo));
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
 	presentInfo.waitSemaphoreCount = 1;
 	presentInfo.pWaitSemaphores = signalSemaphores;
 
-	VkSwapchainKHR swapChains[] = {app->swapChain};
+	VkSwapchainKHR swapChains[] = { app->swapChain };
 	presentInfo.swapchainCount = 1;
 	presentInfo.pSwapchains = swapChains;
 
@@ -1062,13 +1086,14 @@ void drawFrame(struct application *app)
 
 	result = vkQueuePresentKHR(app->presentQueue, &presentInfo);
 
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || app->framebufferResized) {
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || app->framebufferResized) {
 		app->framebufferResized = false;
 		recreateSwapChain(app);
-	} else if (result != VK_SUCCESS) {
+	}
+	else if (result != VK_SUCCESS) {
 		printf("failed to present swap chain image!");
 		exit(1);
-        }
+	}
 
 	app->currentFrame = (app->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
@@ -1079,143 +1104,154 @@ struct QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKH
 	uint32_t queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, NULL);
 
-	VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+	VkQueueFamilyProperties* queueFamilies;
+	queueFamilies = malloc(sizeof(*queueFamilies) * queueFamilyCount);
+	if (!queueFamilies) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies);
 	int i;
 	int success = 0;
-	for (i=0;i<queueFamilyCount;i++) {
+	for (i = 0; i < queueFamilyCount; i++) {
 		if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
 			indices.graphicsFamily = i;
 			success |= 1;
 		}
 		VkBool32 presentSupport = false;
 		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-		if(presentSupport){
+		if (presentSupport) {
 			indices.presentFamily = i;
 			success |= 2;
 		}
 	}
-	if(success&3)
+	free(queueFamilies);
+	if (success & 3)
 		return indices;
 
 	printf("no suitable queue found\n");
 	exit(1);
 }
 
-bool isDeviceSuitable(VkPhysicalDevice device,VkSurfaceKHR surface)
+bool isDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
-	struct QueueFamilyIndices indices = findQueueFamilies(device,surface);
+	struct QueueFamilyIndices indices = findQueueFamilies(device, surface);
 	VkPhysicalDeviceProperties deviceProperties;
 	VkPhysicalDeviceFeatures deviceFeatures;
 	vkGetPhysicalDeviceProperties(device, &deviceProperties);
 	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
 
-	bool extensionsSupported=checkDeviceExtensionSupport(device,surface);
+	bool extensionsSupported = checkDeviceExtensionSupport(device, surface);
 
 	bool swapChainAdequate = false;
-	if(extensionsSupported){
-		struct SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device,surface);
-		swapChainAdequate = (swapChainSupport.formatCount!=0 && swapChainSupport.presentModeCount!=0);
+	if (extensionsSupported) {
+		struct SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device, surface);
+		swapChainAdequate = (swapChainSupport.formatCount != 0 && swapChainSupport.presentModeCount != 0);
 	}
 
-	return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader&&extensionsSupported && swapChainAdequate;
+	return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader && extensionsSupported && swapChainAdequate;
 }
-bool checkDeviceExtensionSupport(VkPhysicalDevice device,VkSurfaceKHR surface)
+bool checkDeviceExtensionSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, NULL);
 
-	VkExtensionProperties availableExtensions[extensionCount];
+	VkExtensionProperties* availableExtensions;
+	availableExtensions = malloc(sizeof(*availableExtensions) * extensionCount);
+	if (!availableExtensions) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
 	vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, availableExtensions);
 
-	int c,i,j,ans;
-	for(c=0;deviceExtensions[c]!=NULL;c++)
+	int c, i, j, ans;
+	for (c = 0; deviceExtensions[c] != NULL; c++)
 		;
 	ans = c;
-	char **requiredExtensions;
+	char** requiredExtensions;
 	requiredExtensions = malloc(sizeof(deviceExtensions));
-	memcpy(requiredExtensions,deviceExtensions,sizeof(deviceExtensions));
+	memcpy(requiredExtensions, deviceExtensions, sizeof(deviceExtensions));
 
-	for (i=0;i!=extensionCount;i++){
-		for(j=0;j!=c;j++){
-			if(!strcmp(availableExtensions[i].extensionName,requiredExtensions[j])){
+	for (i = 0; i != extensionCount; i++) {
+		for (j = 0; j != c; j++) {
+			if (!strcmp(availableExtensions[i].extensionName, requiredExtensions[j])) {
 				ans--;
 				break;
 			}
 		}
 	}
-	return ans==0;
-
+	free(availableExtensions);
+	return ans == 0;
 }
-void pickPhysicalDevice(struct application *app)
+void pickPhysicalDevice(struct application* app)
 {
 	app->physicalDevice = VK_NULL_HANDLE;
 	app->deviceCount = 0;
-	vkEnumeratePhysicalDevices(app->instance,&app->deviceCount,NULL);
-	if(app->deviceCount == 0){
+	vkEnumeratePhysicalDevices(app->instance, &app->deviceCount, NULL);
+	if (app->deviceCount == 0) {
 		printf("failed to find GPUs with VUlkan support!\n");
 		exit(1);
 	}
-	vkEnumeratePhysicalDevices(app->instance,&app->deviceCount,app->devices);
+	vkEnumeratePhysicalDevices(app->instance, &app->deviceCount, app->devices);
 
 	int i;
-	for(i=0;i<app->deviceCount;i++){
-		if(isDeviceSuitable(app->devices[i],app->surface)){
-			app->physicalDevice =  app->devices[i];
+	for (i = 0; i < app->deviceCount; i++) {
+		if (isDeviceSuitable(app->devices[i], app->surface)) {
+			app->physicalDevice = app->devices[i];
 			break;
 		}
 	}
-	if(app->physicalDevice==VK_NULL_HANDLE){
+	if (app->physicalDevice == VK_NULL_HANDLE) {
 		printf("failed to find a suitable GPU!\n");
 		exit(1);
 	}
 
 }
 
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(enum VkDebugUtilsMessageSeverityFlagBitsEXT messageseverity,  unsigned int messageType,  const struct VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData)
+VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(enum VkDebugUtilsMessageSeverityFlagBitsEXT messageseverity, unsigned int messageType, const struct VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
-    return false;
+	return false;
 }
 
 
-void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT *createInfo) {
-        createInfo->sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        createInfo->messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        createInfo->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-        createInfo->pfnUserCallback = debugCallback;
+void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT* createInfo) {
+	createInfo->sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	createInfo->messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	createInfo->messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+	createInfo->pfnUserCallback = debugCallback;
 	createInfo->pNext = NULL;
-    }
+}
 
-bool checkValidationLayerSupport(struct application *app) {
+bool checkValidationLayerSupport(struct application* app) {
 
-        uint32_t layerCount;
-        vkEnumerateInstanceLayerProperties(&layerCount, NULL);
+	uint32_t layerCount;
+	vkEnumerateInstanceLayerProperties(&layerCount, NULL);
 	app->enabled_layers_count = layerCount;
 	VkLayerProperties layers[64];
-        vkEnumerateInstanceLayerProperties(&layerCount, layers);
+	vkEnumerateInstanceLayerProperties(&layerCount, layers);
 	int i;
 	bool layerFound = false;
-        for (i=0;i<app->enabled_layers_count;i++){
+	for (i = 0; i < app->enabled_layers_count; i++) {
 		/*printf("%s\n",layers[i].layerName);*/
-		strcpy((char *)app->enabled_layers[i],layers[i].layerName);
+		strcpy((char*)app->enabled_layers[i], layers[i].layerName);
 		/*TODO - enable checking for more than one validation layer*/
-		if (strcmp(validationLayers[0],layers[i].layerName) == 0) {
+		if (strcmp(validationLayers[0], layers[i].layerName) == 0) {
 			layerFound = true;
 		}
-        }
+	}
 	return layerFound;
 }
-char *readFile(char *filename)
+char* readFile(char* filename)
 {
-	char *buffer = 0;
+	char* buffer = 0;
 	long length;
-	FILE *f = fopen (filename, "r");
+	FILE* f = fopen(filename, "rb");
 	if (f) {
 		fseek(f, 0, SEEK_END);
 		length = ftell(f);
 		fseek(f, 0, SEEK_SET);
 		buffer = malloc(length);
-		if(buffer) {
+		if (buffer) {
 			fread(buffer, 1, length, f);
 		}
 		fclose(f);
@@ -1223,23 +1259,23 @@ char *readFile(char *filename)
 	return buffer;
 }
 
-void getRequiredExtensions(struct application *app)
+void getRequiredExtensions(struct application* app)
 {
 	uint32_t glfwExtensionCount = 0;
-	const char **glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
+	const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
 	int i;
-	for(i = 0; glfwExtensions[i] != NULL; i++){
-		     app->extensions[i] = (char*)glfwExtensions[i];
+	for (i = 0; glfwExtensions[i] != NULL; i++) {
+		app->extensions[i] = (char*)glfwExtensions[i];
 	}
 	app->enabled_extension_count = glfwExtensionCount;
-	if(!enableValidationLayers)
+	if (!enableValidationLayers)
 		return;
 	app->extensions[glfwExtensionCount] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 	app->enabled_extension_count++;
 }
 
-void run(struct application *app)
+void run(struct application* app)
 {
 	initWindow(app);
 	initVulkan(app);
@@ -1247,25 +1283,25 @@ void run(struct application *app)
 	cleanup(app);
 }
 
-void initWindow(struct application *app)
+void initWindow(struct application* app)
 {
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 	app->window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan", NULL, NULL);
 	glfwSetWindowUserPointer(app->window, app);
-	glfwSetFramebufferSizeCallback(app->window,framebufferResizeCallback);
-	if(!app->window){
+	glfwSetFramebufferSizeCallback(app->window, framebufferResizeCallback);
+	if (!app->window) {
 		printf("Unable to create GLFW Window");
 		exit(1);
 	}
 }
-static void framebufferResizeCallback(GLFWwindow *window, int width, int height)
+static void framebufferResizeCallback(GLFWwindow* window, int width, int height)
 {
-        struct application *app = glfwGetWindowUserPointer(window);
-        app->framebufferResized = true;
+	struct application* app = glfwGetWindowUserPointer(window);
+	app->framebufferResized = true;
 }
-void initVulkan(struct application *app)
+void initVulkan(struct application* app)
 {
 	createInstance(app);
 	createSurface(app);
@@ -1287,36 +1323,36 @@ void initVulkan(struct application *app)
 	createSyncObjects(app);
 
 }
-void cleanup(struct application *app)
+void cleanup(struct application* app)
 {
 	cleanupSwapChain(app);
 
-	vkDestroyDescriptorSetLayout(app->device,app->descriptorSetLayout,NULL);
+	vkDestroyDescriptorSetLayout(app->device, app->descriptorSetLayout, NULL);
 
-	vkDestroyBuffer(app->device,app->indexBuffer,NULL);
-	vkFreeMemory(app->device,app->indexBufferMemory,NULL);
+	vkDestroyBuffer(app->device, app->indexBuffer, NULL);
+	vkFreeMemory(app->device, app->indexBufferMemory, NULL);
 
-	vkDestroyBuffer(app->device,app->vertexBuffer,NULL);
-	vkFreeMemory(app->device,app->vertexBufferMemory,NULL);
+	vkDestroyBuffer(app->device, app->vertexBuffer, NULL);
+	vkFreeMemory(app->device, app->vertexBufferMemory, NULL);
 	int i;
-	for(i=0;i<MAX_FRAMES_IN_FLIGHT;i++){
+	for (i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
 		vkDestroySemaphore(app->device, app->renderFinishedSemaphores[i], NULL);
 		vkDestroySemaphore(app->device, app->imageAvailableSemaphores[i], NULL);
 		vkDestroyFence(app->device, app->inFlightFences[i], NULL);
 	}
 
-	vkDestroyCommandPool(app->device,app->commandPool,NULL);
+	vkDestroyCommandPool(app->device, app->commandPool, NULL);
 
 	vkDestroyDevice(app->device, NULL);
 
-	vkDestroySurfaceKHR(app->instance,app->surface,NULL);
-	vkDestroyInstance(app->instance,NULL);
+	vkDestroySurfaceKHR(app->instance, app->surface, NULL);
+	vkDestroyInstance(app->instance, NULL);
 	glfwDestroyWindow(app->window);
 
 	glfwTerminate();
 
 }
-void recreateSwapChain(struct application *app)
+void recreateSwapChain(struct application* app)
 {
 	int width = 0, height = 0;
 	glfwGetFramebufferSize(app->window, &width, &height);
@@ -1336,10 +1372,10 @@ void recreateSwapChain(struct application *app)
 	createDescriptorSets(app);
 	createCommandBuffers(app);
 }
-void cleanupSwapChain(struct application *app) {
+void cleanupSwapChain(struct application* app) {
 	int i;
-	for(i=0;i<app->imageCount;i++){
-		vkDestroyFramebuffer(app->device,app->swapChainFramebuffers[i],NULL);
+	for (i = 0; i < app->imageCount; i++) {
+		vkDestroyFramebuffer(app->device, app->swapChainFramebuffers[i], NULL);
 	}
 
 	vkFreeCommandBuffers(app->device, app->commandPool, app->imageCount, app->commandBuffers);
@@ -1348,19 +1384,19 @@ void cleanupSwapChain(struct application *app) {
 	vkDestroyPipelineLayout(app->device, app->pipelineLayout, NULL);
 	vkDestroyRenderPass(app->device, app->renderPass, NULL);
 
-	for(i=0;i<app->imageCount;i++){
-		vkDestroyImageView(app->device,app->swapChainImageViews[i],NULL);
+	for (i = 0; i < app->imageCount; i++) {
+		vkDestroyImageView(app->device, app->swapChainImageViews[i], NULL);
 	}
 
 	vkDestroySwapchainKHR(app->device, app->swapChain, NULL);
-	for(i=0;i<app->imageCount;i++){
-		vkDestroyBuffer(app->device,app->uniformBuffers[i],NULL);
-		vkFreeMemory(app->device,app->uniformBuffersMemory[i],NULL);
+	for (i = 0; i < app->imageCount; i++) {
+		vkDestroyBuffer(app->device, app->uniformBuffers[i], NULL);
+		vkFreeMemory(app->device, app->uniformBuffersMemory[i], NULL);
 	}
-	vkDestroyDescriptorPool(app->device,app->descriptorPool,NULL);
+	vkDestroyDescriptorPool(app->device, app->descriptorPool, NULL);
 
 }
-void createInstance(struct application *app) {
+void createInstance(struct application* app) {
 	if (enableValidationLayers && !checkValidationLayerSupport(app)) {
 		printf("validation layers requested, but not available!\n");
 		exit(1);
@@ -1374,7 +1410,7 @@ void createInstance(struct application *app) {
 	appInfo.apiVersion = VK_API_VERSION_1_0;
 
 	VkInstanceCreateInfo createInfo;
-	memset(&createInfo,0,sizeof(createInfo));
+	memset(&createInfo, 0, sizeof(createInfo));
 
 	createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	createInfo.pApplicationInfo = &appInfo;
@@ -1382,21 +1418,22 @@ void createInstance(struct application *app) {
 	getRequiredExtensions(app);
 
 	createInfo.enabledExtensionCount = app->enabled_extension_count;
-	createInfo.ppEnabledExtensionNames = (const char * const*) app->extensions;
+	createInfo.ppEnabledExtensionNames = (const char* const*)app->extensions;
 
 	createInfo.enabledLayerCount = 0;
 
 	VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
-	memset(&debugCreateInfo,0,sizeof(debugCreateInfo));
-        if (enableValidationLayers) {
+	memset(&debugCreateInfo, 0, sizeof(debugCreateInfo));
+	if (enableValidationLayers) {
 		createInfo.enabledLayerCount = ARRAY_SIZE(validationLayers);
 		createInfo.ppEnabledLayerNames = validationLayers;
 		populateDebugMessengerCreateInfo(&debugCreateInfo);
-		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
-        } else {
+		createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
+	}
+	else {
 		createInfo.enabledLayerCount = 0;
 		createInfo.pNext = NULL;
-        }
+	}
 
 	if (vkCreateInstance(&createInfo, NULL, &app->instance) != VK_SUCCESS) {
 		printf("failed to create instance!");
@@ -1404,7 +1441,7 @@ void createInstance(struct application *app) {
 	}
 }
 
-void mainLoop(struct application *app)
+void mainLoop(struct application* app)
 {
 	while (!glfwWindowShouldClose(app->window)) {
 		glfwPollEvents();
@@ -1415,7 +1452,7 @@ void mainLoop(struct application *app)
 int main()
 {
 	struct application app;
-	memset(&app,0,sizeof(struct application));
+	memset(&app, 0, sizeof(struct application));
 	run(&app);
 	return 0;
 }

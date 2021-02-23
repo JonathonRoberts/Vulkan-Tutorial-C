@@ -304,8 +304,6 @@ void createImageViews(struct application *app) {
 
 void createGraphicsPipeline(struct application *app)
 {
-	//char *vertShaderCode = readFile("shaders/vert.spv");
-	//char *fragShaderCode = readFile("shaders/frag.spv");
         VkShaderModule vertShaderModule = createShaderModule(app,"shaders/vert.spv");
         VkShaderModule fragShaderModule = createShaderModule(app,"shaders/frag.spv");
 
@@ -333,7 +331,7 @@ VkShaderModule createShaderModule(struct application *app,char *filename)
 {
 	char *code = 0;
 	long length;
-	FILE *f = fopen (filename, "r");
+	FILE *f = fopen (filename, "rb");
 	if (f) {
 		fseek(f, 0, SEEK_END);
 		length = ftell(f);
@@ -369,7 +367,12 @@ struct QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKH
 	uint32_t queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, NULL);
 
-	VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+	VkQueueFamilyProperties *queueFamilies;
+	queueFamilies = malloc(sizeof(*queueFamilies) * queueFamilyCount);
+	if (!queueFamilies) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies);
 	int i;
 	int success = 0;
@@ -385,6 +388,7 @@ struct QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKH
 			success |= 2;
 		}
 	}
+	free(queueFamilies);
 	if(success&3)
 		return indices;
 
@@ -415,7 +419,12 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device,VkSurfaceKHR surface)
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, NULL);
 
-	VkExtensionProperties availableExtensions[extensionCount];
+	VkExtensionProperties *availableExtensions;
+	availableExtensions = malloc(sizeof(*availableExtensions) * extensionCount);
+	if (!availableExtensions) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
 	vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, availableExtensions);
 
 	int c,i,j,ans;
@@ -434,6 +443,7 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device,VkSurfaceKHR surface)
 			}
 		}
 	}
+	free(availableExtensions);
 	return ans==0;
 
 }
@@ -499,7 +509,7 @@ char *readFile(char *filename)
 {
 	char *buffer = 0;
 	long length;
-	FILE *f = fopen (filename, "r");
+	FILE *f = fopen (filename, "rb");
 	if (f) {
 		fseek(f, 0, SEEK_END);
 		length = ftell(f);
@@ -626,6 +636,7 @@ void mainLoop(struct application *app)
 int main()
 {
 	struct application app;
+	memset(&app, 0, sizeof(app));
 	run(&app);
 	return 0;
 }

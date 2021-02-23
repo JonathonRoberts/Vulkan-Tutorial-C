@@ -19,6 +19,22 @@
 #include <stb_image.h>
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+
+#ifdef _WIN32
+#include <windows.h>
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 1
+#endif
+int clock_gettime(int UNUSED, struct timespec* spec)
+{
+	__int64 wintime; GetSystemTimeAsFileTime((FILETIME*)&wintime);
+	wintime -= 116444736000000000i64;  /*1jan1601 to 1jan1970*/
+	spec->tv_sec = wintime / 10000000i64;
+	spec->tv_nsec = wintime % 10000000i64 * 100;
+	return 0;
+}
+#endif
+
 /* for some reason CLANG doesn't realise this is in the glfw3 library */
 extern GLFWAPI VkResult glfwCreateWindowSurface(VkInstance instance, GLFWwindow* window, const VkAllocationCallbacks* allocator, VkSurfaceKHR* surface);
 
@@ -682,7 +698,7 @@ VkShaderModule createShaderModule(struct application *app,char *filename)
 {
 	char *code = 0;
 	long length;
-	FILE *f = fopen (filename, "r");
+	FILE *f = fopen (filename, "rb");
 	if (f) {
 		fseek(f, 0, SEEK_END);
 		length = ftell(f);
@@ -1022,7 +1038,12 @@ void createDescriptorPool(struct application *app) {
 }
 void createDescriptorSets(struct application *app)
 {
-        VkDescriptorSetLayout layouts[app->imageCount];
+	VkDescriptorSetLayout* layouts;
+	layouts = malloc(sizeof(*layouts) * app->imageCount);
+	if (!layouts) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
       int i;
       for(i=0;i<app->imageCount;i++){
               memcpy(&layouts[i], &app->descriptorSetLayout,sizeof(app->descriptorSetLayout));
@@ -1074,6 +1095,7 @@ void createDescriptorSets(struct application *app)
 
 	vkUpdateDescriptorSets(app->device, 2, &descriptorWrites[0], 0, NULL);
         }
+		free(layouts);
 }
 
 void createVertexBuffer(struct application *app)
@@ -1439,7 +1461,12 @@ struct QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKH
 	uint32_t queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, NULL);
 
-	VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+	VkQueueFamilyProperties* queueFamilies;
+	queueFamilies = malloc(sizeof(*queueFamilies) * queueFamilyCount);
+	if (!queueFamilies) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies);
 	int i;
 	int success = 0;
@@ -1455,6 +1482,7 @@ struct QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKH
 			success |= 2;
 		}
 	}
+	free(queueFamilies);
 	if(success&3)
 		return indices;
 
@@ -1486,8 +1514,13 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device,VkSurfaceKHR surface)
 {
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, NULL);
-
-	VkExtensionProperties availableExtensions[extensionCount];
+	
+	VkExtensionProperties* availableExtensions;
+	availableExtensions = malloc(sizeof(*availableExtensions) * extensionCount);
+	if (!availableExtensions) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
 	vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, availableExtensions);
 
 	int c,i,j,ans;
@@ -1506,8 +1539,8 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device,VkSurfaceKHR surface)
 			}
 		}
 	}
+	free(availableExtensions);
 	return ans==0;
-
 }
 void pickPhysicalDevice(struct application *app)
 {
@@ -1571,7 +1604,7 @@ char *readFile(char *filename)
 {
 	char *buffer = 0;
 	long length;
-	FILE *f = fopen (filename, "r");
+	FILE *f = fopen (filename, "rb");
 	if (f) {
 		fseek(f, 0, SEEK_END);
 		length = ftell(f);

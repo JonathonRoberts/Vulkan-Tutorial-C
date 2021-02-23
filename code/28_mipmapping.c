@@ -26,6 +26,22 @@ const char *TEXTURE_PATH = "textures/viking_room.png";
 #include <stb_image.h>
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+
+#ifdef _WIN32
+#include <windows.h>
+#ifndef CLOCK_MONOTONIC
+#define CLOCK_MONOTONIC 1
+#endif
+int clock_gettime(int UNUSED, struct timespec* spec)
+{
+	__int64 wintime; GetSystemTimeAsFileTime((FILETIME*)&wintime);
+	wintime -= 116444736000000000i64;  /*1jan1601 to 1jan1970*/
+	spec->tv_sec = wintime / 10000000i64;
+	spec->tv_nsec = wintime % 10000000i64 * 100;
+	return 0;
+}
+#endif
+
 /* for some reason CLANG doesn't realise this is in the glfw3 library */
 extern GLFWAPI VkResult glfwCreateWindowSurface(VkInstance instance, GLFWwindow* window, const VkAllocationCallbacks* allocator, VkSurfaceKHR* surface);
 
@@ -681,7 +697,7 @@ VkShaderModule createShaderModule(struct application *app,char *filename)
 {
 	char *code = 0;
 	long length;
-	FILE *f = fopen (filename, "r");
+	FILE *f = fopen (filename, "rb");
 	if (f) {
 		fseek(f, 0, SEEK_END);
 		length = ftell(f);
@@ -1028,7 +1044,7 @@ void copyBufferToImage(struct application *app,VkBuffer buffer, VkImage image, u
 void loadFile(const char * filename, const int is_mtl, const char *obj_filename, char ** buffer, size_t * len)
 {
     long string_size = 0, read_size = 0;
-    FILE * handler = fopen(filename, "r");
+    FILE * handler = fopen(filename, "rb");
 
     if (handler) {
         fseek(handler, 0, SEEK_END);
@@ -1052,8 +1068,8 @@ void loadModel(struct application *app)
         tinyobj_attrib_t attrib;
         tinyobj_shape_t *shapes;
         tinyobj_material_t *materials=NULL;
-        unsigned long num_shapes;
-        unsigned long num_materials;
+        size_t num_shapes;
+        size_t num_materials;
         memset(&attrib,0,sizeof(attrib));
         if (tinyobj_parse_obj(&attrib, &shapes, &num_shapes,&materials,&num_materials, MODEL_PATH,loadFile,TINYOBJ_FLAG_TRIANGULATE) != TINYOBJ_SUCCESS) {
                 printf("failed to load object\n");
@@ -1188,7 +1204,12 @@ void createDescriptorPool(struct application *app) {
 }
 void createDescriptorSets(struct application *app)
 {
-        VkDescriptorSetLayout layouts[app->imageCount];
+	VkDescriptorSetLayout* layouts;
+	layouts = malloc(sizeof(*layouts) * app->imageCount);
+	if (!layouts) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
       int i;
       for(i=0;i<app->imageCount;i++){
               memcpy(&layouts[i], &app->descriptorSetLayout,sizeof(app->descriptorSetLayout));
@@ -1240,6 +1261,7 @@ void createDescriptorSets(struct application *app)
 
 	vkUpdateDescriptorSets(app->device, 2, &descriptorWrites[0], 0, NULL);
         }
+		free(layouts);
 }
 
 void createVertexBuffer(struct application *app)
@@ -1605,7 +1627,12 @@ struct QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKH
 	uint32_t queueFamilyCount = 0;
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, NULL);
 
-	VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+	VkQueueFamilyProperties* queueFamilies;
+	queueFamilies = malloc(sizeof(*queueFamilies) * queueFamilyCount);
+	if (!queueFamilies) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
 	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies);
 	int i;
 	int success = 0;
@@ -1621,6 +1648,7 @@ struct QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKH
 			success |= 2;
 		}
 	}
+	free(queueFamilies);
 	if(success&3)
 		return indices;
 
@@ -1653,7 +1681,12 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device,VkSurfaceKHR surface)
 	uint32_t extensionCount;
 	vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, NULL);
 
-	VkExtensionProperties availableExtensions[extensionCount];
+	VkExtensionProperties* availableExtensions;
+	availableExtensions = malloc(sizeof(*availableExtensions) * extensionCount);
+	if (!availableExtensions) {
+		printf("Unable to allocate memory\n");
+		exit(1);
+	}
 	vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, availableExtensions);
 
 	int c,i,j,ans;
@@ -1672,8 +1705,8 @@ bool checkDeviceExtensionSupport(VkPhysicalDevice device,VkSurfaceKHR surface)
 			}
 		}
 	}
+	free(availableExtensions);
 	return ans==0;
-
 }
 void pickPhysicalDevice(struct application *app)
 {
@@ -1737,7 +1770,7 @@ char *readFile(char *filename)
 {
 	char *buffer = 0;
 	long length;
-	FILE *f = fopen (filename, "r");
+	FILE *f = fopen (filename, "rb");
 	if (f) {
 		fseek(f, 0, SEEK_END);
 		length = ftell(f);

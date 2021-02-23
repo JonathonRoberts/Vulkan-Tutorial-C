@@ -62,6 +62,7 @@ void mainloop(struct application *app)
 int main()
 {
 	struct application app;
+	memset(&app, 0, sizeof(app));
 	run(&app);
 	mainloop(&app);
 	return 0;
